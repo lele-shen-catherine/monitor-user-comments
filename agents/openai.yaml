@@ -1,0 +1,4 @@
+interface:
+  display_name: "用户评论监测"
+  short_description: "任意关键词→抖音评论采集与分析→可视化页面"
+  default_prompt: "使用 $monitor-user-comments 监测我提供的任意关键词，采集或读取抖音评论并生成可视化页面。"
