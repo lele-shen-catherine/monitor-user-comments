@@ -15,11 +15,11 @@ class MonitorTests(unittest.TestCase):
  def test_ui_launcher_help(self):
   r=subprocess.run([sys.executable,str(UI),"--help"],capture_output=True,text=True)
   self.assertEqual(r.returncode,0);self.assertIn("MediaCrawler",r.stdout);self.assertIn("快速监测",HOME);self.assertIn("20 条高赞帖子",HOME)
- def test_collector_reuses_persistent_profile_without_cdp_wait(self):
+ def test_collector_reuses_local_browser_profile(self):
   with tempfile.TemporaryDirectory() as t:
    root=pathlib.Path(t);py=root/".venv/bin/python";py.parent.mkdir(parents=True);py.write_text("")
    cmd=command_for(root,root/"run","外卖",20,50)
-   self.assertIn("config.ENABLE_CDP_MODE=False",cmd[2]);self.assertIn("--crawler_max_notes_count",cmd);self.assertEqual(cmd[cmd.index("--crawler_max_notes_count")+1],"20");self.assertEqual(cmd[cmd.index("--max_comments_count_singlenotes")+1],"50")
+  self.assertIn("config.ENABLE_CDP_MODE=True",cmd[2]);self.assertIn("--crawler_max_notes_count",cmd);self.assertEqual(cmd[cmd.index("--crawler_max_notes_count")+1],"20");self.assertEqual(cmd[cmd.index("--max_comments_count_singlenotes")+1],"50")
  def test_empty_collector_output_is_not_success(self):
   with tempfile.TemporaryDirectory() as t:
    root=pathlib.Path(t);empty=root/"dy/jsonl/a_contents_1.jsonl";empty.parent.mkdir(parents=True);empty.write_text("\n")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """在本机启动抖音评论监测页面，并连接已安装的 MediaCrawler。"""
 from __future__ import annotations
-import argparse, json, os, pathlib, re, shutil, subprocess, sys, threading, uuid
+import argparse, json, os, pathlib, re, shutil, subprocess, sys, threading, uuid, webbrowser
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -15,8 +15,8 @@ HOME=HOME.replace("默认最多采集 100 个视频、每个视频 100 条一级
 HOME=HOME.replace("<button>开始监测</button>","<button>快速监测</button>")
 
 def command_for(root: pathlib.Path, run_dir: pathlib.Path, keyword: str, max_posts: int, max_comments: int):
-    venv_python=root/".venv/bin/python"
-    launch="import config,runpy;config.ENABLE_CDP_MODE=False;runpy.run_path('main.py',run_name='__main__')"
+    venv_python=root/(".venv/Scripts/python.exe" if os.name=="nt" else ".venv/bin/python")
+    launch="import config,runpy;config.ENABLE_CDP_MODE=True;runpy.run_path('main.py',run_name='__main__')"
     base=[str(venv_python),"-c",launch] if venv_python.exists() else ([shutil.which("uv"),"run","python","-c",launch] if shutil.which("uv") else None)
     if not base: raise RuntimeError("未找到 MediaCrawler 的 .venv 或 uv")
     return base+["--platform","dy","--lt","qrcode","--type","search","--keywords",keyword,"--save_data_option","jsonl","--save_data_path",str(run_dir),"--get_comment","true","--get_sub_comment","false","--crawler_max_notes_count",str(max_posts),"--max_comments_count_singlenotes",str(max_comments),"--headless","false"]
@@ -38,6 +38,8 @@ def execute(job_id: str, cfg, keyword: str, mode: str):
         mode_name="深度监测" if mode=="deep" else "快速监测"
         job.update(status="collecting",message=f"正在执行{mode_name}：{max_posts} 条高赞帖子，每帖最多 {max_comments} 条评论；登录状态失效时请在浏览器中重新登录。")
         env=os.environ.copy();env["DY_SORT_TYPE"]="1";env["DY_PUBLISH_TIME_TYPE"]="180"
+        media_bin=cfg.collector_root/".venv"/("Scripts" if os.name=="nt" else "bin")
+        if media_bin.exists(): env["PATH"]=str(media_bin)+os.pathsep+env.get("PATH","")
         mpl_cache=cfg.workspace/".matplotlib";mpl_cache.mkdir(parents=True,exist_ok=True);env["MPLCONFIGDIR"]=str(mpl_cache)
         log=run_dir/"collector.log"
         with log.open("w",encoding="utf-8") as handle:
@@ -82,8 +84,10 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     p=argparse.ArgumentParser(description="启动用户评论监测本地页面")
     p.add_argument("--collector-root",type=pathlib.Path,required=True,help="MediaCrawler 项目目录")
-    p.add_argument("--workspace",type=pathlib.Path,default=pathlib.Path("runs"));p.add_argument("--results",type=pathlib.Path,default=pathlib.Path("reports"));p.add_argument("--port",type=int,default=8765);p.add_argument("--quick-posts",type=int,default=20);p.add_argument("--quick-comments",type=int,default=50);p.add_argument("--max-posts",type=int,default=100);p.add_argument("--max-comments",type=int,default=100);p.add_argument("--timeout",type=int,default=3600)
+    p.add_argument("--workspace",type=pathlib.Path,default=pathlib.Path("runs"));p.add_argument("--results",type=pathlib.Path,default=pathlib.Path("reports"));p.add_argument("--port",type=int,default=8765);p.add_argument("--quick-posts",type=int,default=20);p.add_argument("--quick-comments",type=int,default=50);p.add_argument("--max-posts",type=int,default=100);p.add_argument("--max-comments",type=int,default=100);p.add_argument("--timeout",type=int,default=3600);p.add_argument("--no-browser",action="store_true")
     cfg=p.parse_args();cfg.collector_root=cfg.collector_root.resolve();cfg.workspace=cfg.workspace.resolve();cfg.results=cfg.results.resolve();cfg.results.mkdir(parents=True,exist_ok=True)
     if not (cfg.collector_root/"main.py").exists():p.error("--collector-root 不是有效的 MediaCrawler 目录")
-    Handler.cfg=cfg;server=ThreadingHTTPServer(("127.0.0.1",cfg.port),Handler);print(f"open http://127.0.0.1:{cfg.port}");server.serve_forever()
+    Handler.cfg=cfg;server=ThreadingHTTPServer(("127.0.0.1",cfg.port),Handler);url=f"http://127.0.0.1:{cfg.port}";print(f"open {url}")
+    if not cfg.no_browser: threading.Timer(.5,lambda:webbrowser.open(url)).start()
+    server.serve_forever()
 if __name__=="__main__":main()
