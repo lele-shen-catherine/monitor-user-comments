@@ -145,7 +145,7 @@ def main() -> int:
         raise RuntimeError("未找到 uv；请重新运行仓库根目录的一键启动文件。")
     install_mediacrawler(args.yes)
     app_python = install_dependencies(uv)
-    print("\n安装完成。以后会复用本机环境和抖音登录状态。\n", flush=True)
+    print("\n安装完成。请在自己的浏览器中登录自己的抖音账号。\n", flush=True)
     if args.install_only:
         return 0
     run(
